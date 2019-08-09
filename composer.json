@@ -1,0 +1,34 @@
+{
+  "name": "he110/odds-checker",
+  "description": "Tools for parsing, caching and using ODDS from https://the-odds-api.com",
+  "keywords": ["odds", "parsing", "parse", "php"],
+  "homepage": "https://github.com/he110/odds-checker",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Ilya S. Zobenko",
+      "email": "ilya@zobenko.ru",
+      "homepage": "https://zobenko.ru"
+    }
+  ],
+  "require": {
+    "php": ">=7.1",
+    "guzzlehttp/guzzle": "^6.3",
+    "psr/cache": "^1.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8"
+  },
+  "autoload": {
+    "psr-4": {"He110\\OddsChecker\\": "src/OddsChecker"}
+  },
+  "autoload-dev": {
+    "psr-4": {"He110\\OddsChecker\\": "tests/OddsChecker"}
+  },
+  "scripts": {
+    "test": [
+      "phpunit"
+    ]
+  }
+}
