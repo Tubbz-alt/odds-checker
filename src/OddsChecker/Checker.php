@@ -14,21 +14,22 @@ use Psr\Cache\CacheItemPoolInterface;
 
 class Checker
 {
-    /** @var string */
-    private $apiKey;
-
     /** @var int */
     const ODDS_API_VERSION = 3;
 
     /** @var int */
     const ODDS_CACHE_LIFETIME_HOURS = 12;
 
-    /** @var CacheItemPoolInterface */
+    /** @var string */
+    private $apiKey;
+
+    /** @var CacheItemPoolInterface|null */
     private $cachePool;
 
     /** @var Client */
     private $client;
 
+    /** @var \DateTimeZone */
     private $timezone;
 
     /**
@@ -36,7 +37,7 @@ class Checker
      * @param string $apiKey
      * @param CacheItemPoolInterface $cacheItemPool
      */
-    public function __construct(string $apiKey, CacheItemPoolInterface $cacheItemPool)
+    public function __construct(string $apiKey, CacheItemPoolInterface $cacheItemPool = null)
     {
         $this->apiKey = $apiKey;
         $this->client = new Client();
@@ -68,18 +69,24 @@ class Checker
             ."/odds/?"
             .http_build_query($requestData);
 
-        $acceptableHour = $this->getAcceptableHour();
+        $cacheItemPool = $this->getCachePool();
 
-        $cacheKey = md5("odds_cache_".$acceptableHour."_".$url);
-        $cacheItem = $this->getCachePool()->getItem($cacheKey);
+        if ($cacheItemPool) {
+            $acceptableHour = $this->getAcceptableHour();
 
-        if ($cacheItem->isHit())
-            return $cacheItem->get();
+            $cacheKey = md5("odds_cache_" . $acceptableHour . "_" . $url);
+            $cacheItem = $this->getCachePool()->getItem($cacheKey);
+
+            if ($cacheItem->isHit()) {
+                return $cacheItem->get();
+            }
+
+        }
 
         try {
             $apiResponse = $this->getClient()->request("GET", $url);
         } catch (\Exception $e) {
-            throw new \HttpRequestMethodException("Client got a fatal error");
+            throw new \HttpException("Client got a fatal error");
         }
 
         if (200 !== $apiResponse->getStatusCode())
@@ -94,11 +101,18 @@ class Checker
         if (true !== $response["success"])
             throw new \HttpException("Unknown error from API");
 
-        $cacheItem->set($response["data"]);
+        if ($cacheItemPool)
+            $cacheItem->set($response["data"]);
 
         return $response["data"];
     }
 
+    /**
+     * Allows to get nearest acceptable hour.
+     * It's required to minimize API-calls amount and uses as part of cache-item key
+     *
+     * @return int
+     */
     public function getAcceptableHour():int
     {
         $nowHours = (new \DateTime())->setTimezone($this->getTimezone())->format("H");
@@ -125,8 +139,6 @@ class Checker
         return $this;
     }
 
-
-
     /**
      * @return string
      */
@@ -136,18 +148,18 @@ class Checker
     }
 
     /**
-     * @return CacheItemPoolInterface
+     * @return CacheItemPoolInterface|null
      */
-    public function getCachePool(): CacheItemPoolInterface
+    public function getCachePool(): ?CacheItemPoolInterface
     {
         return $this->cachePool;
     }
 
     /**
-     * @param CacheItemPoolInterface $cachePool
+     * @param CacheItemPoolInterface|null $cachePool
      * @return Checker
      */
-    public function setCachePool(CacheItemPoolInterface $cachePool): self
+    public function setCachePool(CacheItemPoolInterface $cachePool = null): self
     {
         $this->cachePool = $cachePool;
         return $this;
