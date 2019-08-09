@@ -52,7 +52,6 @@ class Checker
      *
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws \HttpException
-     * @throws \HttpRequestMethodException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function getData(string $sport = "UPCOMING", string $region = "uk"): array
