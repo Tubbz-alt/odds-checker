@@ -9,10 +9,10 @@
 
     <filter>
         <whitelist>
-            <directory suffix=".php">src/OddsChecker/</directory>
+            <directory suffix=".php">./src/OddsChecker/</directory>
+            <directory suffix=".php">./src/OddsChecker/Exceptions/</directory>
         </whitelist>
     </filter>
-
     <php>
         <ini name="date.timezone" value="UTC"/>
     </php>

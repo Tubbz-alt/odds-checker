@@ -9,6 +9,8 @@
 namespace He110\OddsChecker;
 
 use GuzzleHttp\Client;
+use He110\OddsChecker\Exceptions\InvalidResponseException;
+use He110\OddsChecker\Exceptions\InvalidResponseStatusException;
 use PHPUnit\Framework\TestCase;
 use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
@@ -37,17 +39,22 @@ class CheckerTest extends TestCase
     /**
      * @covers \He110\OddsChecker\Checker::getData()
      * @covers \He110\OddsChecker\Checker::setClient()
+     * @covers \He110\OddsChecker\Checker()
      */
-    public function testGetData()
+    public function testGetDataClient()
     {
         $responseMock = $this->getResponseMock();
-        $responseMockBody = json_decode($responseMock->getBody()->getContents(), true);
-        $responseMockData = $responseMockBody["data"];
 
         $clientMock = $this->getMockBuilder(Client::class)->getMock();
-        $clientMock->expects($this->once())
-            ->method("request")->willReturn($responseMock);
+        $clientMock->method("request")->willReturn($responseMock);
 
+        $cacheItem = $this->getMockBuilder(CacheItemInterface::class)->getMock();
+        $cacheItem->method("isHit")->willReturn(false);
+        $cachePool = $this->getMockBuilder(CacheItemPoolInterface::class)->getMock();
+        $cachePool->method("getItem")->willReturn($cacheItem);
+        $cacheItem->method("set")->willReturn(true);
+
+        $this->checker = new Checker($this->apiToken, $cachePool);
         $this->checker->setClient($clientMock);
 
         $result = $this->checker->getData();
@@ -55,13 +62,24 @@ class CheckerTest extends TestCase
         $this->assertEquals("aussierules_afl", $result[0]["sport_key"]);
         $this->assertEquals("AFL", $result[0]["sport_nice"]);
         $this->assertEquals("Greater Western Sydney Giants", $result[0]["teams"][0]);
+    }
+
+    /**
+     * @covers \He110\OddsChecker\Checker::getData()
+     * @covers \He110\OddsChecker\Checker::setClient()
+     * @covers \He110\OddsChecker\Checker()
+     */
+    public function testGetDataCache()
+    {
+        $responseMock = $this->getResponseMock();
+        $responseMockBody = json_decode($responseMock->getBody()->getContents(), true);
+        $responseMockData = $responseMockBody["data"];
 
         $cacheItem = $this->getMockBuilder(CacheItemInterface::class)->getMock();
-        $cacheItem->expects($this->any())->method("isHit")->willReturn(true);
+        $cacheItem->method("isHit")->willReturn(true);
         $cacheItem->expects($this->once())->method("get")->willReturn($responseMockData);
         $cachePool = $this->getMockBuilder(CacheItemPoolInterface::class)->getMock();
         $cachePool->expects($this->any())->method("getItem")->willReturn($cacheItem);
-
         $this->checker = new Checker($this->apiToken, $cachePool);
 
         $result = $this->checker->getData();
@@ -72,12 +90,69 @@ class CheckerTest extends TestCase
     }
 
     /**
+     * @covers \He110\OddsChecker\Checker::getData()
+     * @covers \He110\OddsChecker\Checker::setClient()
+     * @covers \He110\OddsChecker\Checker()
+     */
+    public function testGetDataStatusException()
+    {
+        $responseMock = $this->getResponseMock(500, false, false);
+
+        $clientMock = $this->getMockBuilder(Client::class)->getMock();
+        $clientMock->method("request")->willReturn($responseMock);
+
+        $this->checker->setClient($clientMock);
+
+        $this->expectException(InvalidResponseStatusException::class);
+
+        $this->checker->getData();
+    }
+
+    /**
+     * @covers \He110\OddsChecker\Checker::getData()
+     * @covers \He110\OddsChecker\Checker::setClient()
+     * @covers \He110\OddsChecker\Checker()
+     */
+    public function testGetDataResponseExceptionFirst()
+    {
+        $this->expectException(InvalidResponseException::class);
+
+        $responseMock = $this->getResponseMock(200, false, false);
+
+        $clientMock = $this->getMockBuilder(Client::class)->getMock();
+        $clientMock->method("request")->willReturn($responseMock);
+
+        $this->checker->setClient($clientMock);
+
+        $this->checker->getData();
+    }
+
+    /**
+     * @covers \He110\OddsChecker\Checker::getData()
+     * @covers \He110\OddsChecker\Checker::setClient()
+     * @covers \He110\OddsChecker\Checker()
+     */
+    public function testGetDataResponseExceptionSecond()
+    {
+        $this->expectException(InvalidResponseException::class);
+
+        $responseMock = $this->getResponseMock(200, true, false);
+
+        $clientMock = $this->getMockBuilder(Client::class)->getMock();
+        $clientMock->method("request")->willReturn($responseMock);
+
+        $this->checker->setClient($clientMock);
+
+        $this->checker->getData();
+    }
+
+    /**
      * @return \PHPUnit\Framework\MockObject\MockObject|ResponseInterface
      */
-    private function getResponseMock()
+    private function getResponseMock($statusCode = 200, $isCorrect = true, $isSuccessfully = true)
     {
         $data = array(
-            'success' => true,
+            'success' => $isSuccessfully,
             'data' => array(
                 0 => array (
                     'sport_key' => 'aussierules_afl',
@@ -124,11 +199,16 @@ class CheckerTest extends TestCase
             )
         );
         $body = $this->getMockBuilder(StreamInterface::class)->getMock();
-        $body->method("isReadable")->willReturn(true);
-        $body->method("getContents")->willReturn(json_encode($data, JSON_UNESCAPED_UNICODE));
+        if ($isCorrect)
+            $body->method("getContents")->willReturn(json_encode($data, JSON_UNESCAPED_UNICODE));
+        else {
+            $body->method("getContents")->willReturn(json_encode([
+                "error" => "unknown error"
+            ]));
+        }
 
         $response = $this->getMockBuilder(ResponseInterface::class)->getMock();
-        $response->method("getStatusCode")->willReturn(200);
+        $response->method("getStatusCode")->willReturn($statusCode);
         $response->method("getBody")->willReturn($body);
 
         return $response;
@@ -194,6 +274,14 @@ class CheckerTest extends TestCase
     public function testGetClient()
     {
         $this->assertEquals(Client::class, get_class($this->checker->getClient()));
+    }
+
+    /**
+     * @covers \He110\OddsChecker\Checker::getApiKey()
+     */
+    public function testGetApiKey()
+    {
+        $this->assertEquals($this->apiToken, $this->checker->getApiKey());
     }
 
 

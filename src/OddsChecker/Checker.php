@@ -10,6 +10,8 @@ namespace He110\OddsChecker;
 
 
 use GuzzleHttp\Client;
+use He110\OddsChecker\Exceptions\InvalidResponseException;
+use He110\OddsChecker\Exceptions\InvalidResponseStatusException;
 use Psr\Cache\CacheItemPoolInterface;
 
 class Checker
@@ -49,9 +51,9 @@ class Checker
      * @param string $sport
      * @param string $region
      * @return array
-     *
+     * @throws InvalidResponseException
+     * @throws InvalidResponseStatusException
      * @throws \GuzzleHttp\Exception\GuzzleException
-     * @throws \HttpException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function getData(string $sport = "UPCOMING", string $region = "uk"): array
@@ -70,6 +72,7 @@ class Checker
 
         $cacheItemPool = $this->getCachePool();
 
+        $cacheItem = null;
         if ($cacheItemPool) {
             $acceptableHour = $this->getAcceptableHour();
 
@@ -82,25 +85,20 @@ class Checker
 
         }
 
-        try {
-            $apiResponse = $this->getClient()->request("GET", $url);
-        } catch (\Exception $e) {
-            throw new \HttpException("Client got a fatal error");
-        }
+        $apiResponse = $this->getClient()->request("GET", $url);
 
         if (200 !== $apiResponse->getStatusCode())
-            throw new \HttpException("Response from API come with status, different from 200");
-        if (!$apiResponse->getBody()->isReadable())
-            throw new \HttpException("Can't read API response");
+            throw new InvalidResponseStatusException("Response from API come with status, different from 200");
+
         $response = \GuzzleHttp\json_decode($apiResponse->getBody()->getContents(), true);
 
         if (!array_key_exists("success", $response) || !array_key_exists("data", $response))
-            throw new \HttpException("Got unusual struct of response");
+            throw new InvalidResponseException("Got unusual struct of response");
 
         if (true !== $response["success"])
-            throw new \HttpException("Unknown error from API");
+            throw new InvalidResponseException("Unknown error from API");
 
-        if ($cacheItemPool)
+        if ($cacheItemPool && !is_null($cacheItem))
             $cacheItem->set($response["data"]);
 
         return $response["data"];
@@ -141,7 +139,7 @@ class Checker
     /**
      * @return string
      */
-    private function getApiKey(): string
+    public function getApiKey(): string
     {
         return $this->apiKey;
     }
