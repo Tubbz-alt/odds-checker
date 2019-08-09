@@ -44,7 +44,17 @@ class Checker
         return $this;
     }
 
-    public function getData(string $sport = "UPCOMING", string $region = "uk")
+    /**
+     * @param string $sport
+     * @param string $region
+     * @return array
+     *
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws \HttpException
+     * @throws \HttpRequestMethodException
+     * @throws \Psr\Cache\InvalidArgumentException
+     */
+    public function getData(string $sport = "UPCOMING", string $region = "uk"): array
     {
         $requestData = [
             "sport" => $sport,
@@ -60,9 +70,33 @@ class Checker
 
         $acceptableHour = $this->getAcceptableHour();
 
-        $cacheKey = md5("odds_cache_${$acceptableHour}_${$url}");
+        $cacheKey = md5("odds_cache_".$acceptableHour."_".$url);
+        $cacheItem = $this->getCachePool()->getItem($cacheKey);
 
-        //TODO: Сделать получение из кэша
+        if ($cacheItem->isHit())
+            return $cacheItem->get();
+
+        try {
+            $apiResponse = $this->getClient()->request("GET", $url);
+        } catch (\Exception $e) {
+            throw new \HttpRequestMethodException("Client got a fatal error");
+        }
+
+        if (200 !== $apiResponse->getStatusCode())
+            throw new \HttpException("Response from API come with status, different from 200");
+        if (!$apiResponse->getBody()->isReadable())
+            throw new \HttpException("Can't read API response");
+        $response = \GuzzleHttp\json_decode($apiResponse->getBody()->getContents(), true);
+
+        if (!array_key_exists("success", $response) || !array_key_exists("data", $response))
+            throw new \HttpException("Got unusual struct of response");
+
+        if (true !== $response["success"])
+            throw new \HttpException("Unknown error from API");
+
+        $cacheItem->set($response["data"]);
+
+        return $response["data"];
     }
 
     public function getAcceptableHour():int
@@ -117,6 +151,14 @@ class Checker
     {
         $this->cachePool = $cachePool;
         return $this;
+    }
+
+    /**
+     * @return Client
+     */
+    public function getClient(): Client
+    {
+        return $this->client;
     }
 
     /**

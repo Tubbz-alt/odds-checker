@@ -1,1 +1,1 @@
-C:37:"PHPUnit\Runner\DefaultTestResultCache":224:{a:2:{s:7:"defects";a:1:{s:42:"He110\OddsChecker\CheckerTest::testGetData";i:5;}s:5:"times";a:2:{s:42:"He110\OddsChecker\CheckerTest::testGetData";d:0.042;s:52:"He110\OddsChecker\CheckerTest::testGetAcceptableHour";d:0.056;}}}
+C:37:"PHPUnit\Runner\DefaultTestResultCache":224:{a:2:{s:7:"defects";a:1:{s:42:"He110\OddsChecker\CheckerTest::testGetData";i:4;}s:5:"times";a:2:{s:42:"He110\OddsChecker\CheckerTest::testGetData";d:0.044;s:52:"He110\OddsChecker\CheckerTest::testGetAcceptableHour";d:0.047;}}}
