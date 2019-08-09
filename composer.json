@@ -21,7 +21,10 @@
     "phpunit/phpunit": "^8"
   },
   "autoload": {
-    "psr-4": {"He110\\OddsChecker\\": "src/OddsChecker"}
+    "psr-4": {"He110\\OddsChecker\\": "src/OddsChecker"},
+    "exclude-from-classmap": [
+      "tests/"
+    ]
   },
   "autoload-dev": {
     "psr-4": {"He110\\OddsChecker\\": "tests/OddsChecker"}
