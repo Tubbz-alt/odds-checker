@@ -13,6 +13,7 @@ use GuzzleHttp\Client;
 use He110\OddsChecker\Exceptions\InvalidResponseException;
 use He110\OddsChecker\Exceptions\InvalidResponseStatusException;
 use Psr\Cache\CacheItemPoolInterface;
+use Psr\Http\Message\ResponseInterface;
 
 class Checker
 {
@@ -48,8 +49,10 @@ class Checker
     }
 
     /**
-     * @param string $sport
-     * @param string $region
+     * Gets data from an API
+     *
+     * @param string $sport – Sport key. By default is set to `UPCOMING`
+     * @param string $region – Region key with 2 characters. By default is set to `uk`
      * @return array
      * @throws InvalidResponseException
      * @throws InvalidResponseStatusException
@@ -65,10 +68,7 @@ class Checker
             "apiKey" => $this->getApiKey()
         ];
 
-        $url = "https://api.the-odds-api.com/v"
-            .static::ODDS_API_VERSION
-            ."/odds/?"
-            .http_build_query($requestData);
+        $url = "https://api.the-odds-api.com/v".static::ODDS_API_VERSION."/odds/?".http_build_query($requestData);
 
         $cacheItemPool = $this->getCachePool();
 
@@ -82,11 +82,27 @@ class Checker
             if ($cacheItem->isHit()) {
                 return $cacheItem->get();
             }
-
         }
 
         $apiResponse = $this->getClient()->request("GET", $url);
+        $response = $this->validateClientResponse($apiResponse);
 
+        if ($cacheItemPool && !is_null($cacheItem))
+            $cacheItem->set($response["data"]);
+
+        return $response["data"];
+    }
+
+    /**
+     * Checks API response for all required fields and their values
+     *
+     * @param ResponseInterface $apiResponse
+     * @return mixed
+     * @throws InvalidResponseException
+     * @throws InvalidResponseStatusException
+     */
+    private function validateClientResponse(ResponseInterface $apiResponse)
+    {
         if (200 !== $apiResponse->getStatusCode())
             throw new InvalidResponseStatusException("Response from API come with status, different from 200");
 
@@ -98,10 +114,7 @@ class Checker
         if (true !== $response["success"])
             throw new InvalidResponseException("Unknown error from API");
 
-        if ($cacheItemPool && !is_null($cacheItem))
-            $cacheItem->set($response["data"]);
-
-        return $response["data"];
+        return $response;
     }
 
     /**
