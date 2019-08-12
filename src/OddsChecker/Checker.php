@@ -61,6 +61,7 @@ class Checker
      */
     public function getData(string $sport = "UPCOMING", string $region = "uk"): array
     {
+        $region = strtolower($region);
         $requestData = [
             "sport" => $sport,
             "region" => $region,
