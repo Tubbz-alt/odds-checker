@@ -22,13 +22,16 @@ use He110\OddsChecker\Checker;
 $checker = new Checker(PASTE_YOUR_API_KEY_HERE);
 
 //To get upcoming, use short version
-$checker->getData();
+$data = $checker->getData();
 
 //or user sport-specified version
-$checker->getData("soccer_epl");
+$data = $checker->getData("soccer_epl");
 
 //you can also specify region code
-$checker->getData("soccer_epl", "uk");
+$data = $checker->getData("soccer_epl", "uk");
+
+//If you need to get team-specified data, use 'filterData' method
+$filtered = $checker->filterData($data, "Liverpool");
 
 ```
 
