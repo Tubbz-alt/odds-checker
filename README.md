@@ -1,6 +1,5 @@
 # The-odds-api Client [![Build Status](https://travis-ci.com/he110/odds-checker.svg?branch=master)](https://travis-ci.com/he110/odds-checker)
 
-[![Total Downloads](https://img.shields.io/packagist/dt/he110/odds-checker.svg)](https://packagist.org/packages/he110/odds-checker)
 [![Latest Stable Version](https://img.shields.io/packagist/v/he110/odds-checker.svg)](https://packagist.org/packages/he110/odds-checker) [![codecov](https://codecov.io/gh/he110/odds-checker/branch/master/graph/badge.svg)](https://codecov.io/gh/he110/odds-checker) [![Maintainability](https://api.codeclimate.com/v1/badges/818933b27c2e569a7568/maintainability)](https://codeclimate.com/github/he110/odds-checker/maintainability)
 
 Tools for parsing, caching and using ODDS from https://the-odds-api.com

@@ -284,5 +284,43 @@ class CheckerTest extends TestCase
         $this->assertEquals($this->apiToken, $this->checker->getApiKey());
     }
 
+    /**
+     * @dataProvider filterDataProvider
+     *
+     * @covers \He110\OddsChecker\Checker::filterData()
+     */
+    public function testFilterData(string $team, int $limit, bool $actual, int $count)
+    {
+        $responseMock = $this->getResponseMock();
+
+        $clientMock = $this->getMockBuilder(Client::class)->getMock();
+        $clientMock->method("request")->willReturn($responseMock);
+
+        $cacheItem = $this->getMockBuilder(CacheItemInterface::class)->getMock();
+        $cacheItem->method("isHit")->willReturn(false);
+        $cachePool = $this->getMockBuilder(CacheItemPoolInterface::class)->getMock();
+        $cachePool->method("getItem")->willReturn($cacheItem);
+        $cacheItem->method("set")->willReturn(true);
+
+        $this->checker = new Checker($this->apiToken, $cachePool);
+        $this->checker->setClient($clientMock);
+
+        $result = $this->checker->getData();
+
+        $filtered = $this->checker->filterData($result, $team, $limit, $actual);
+        $this->assertCount($count, $filtered);
+    }
+
+    public function filterDataProvider()
+    {
+        return array(
+            array("Hawthorn Hawks", 1, false, 1),
+            array("Hawthorn Hawks", 1, true, 0),
+            array("Hawthorn Hawks", 0, false, 0),
+            array("Hawthorn Hawks", 0, true, 0),
+            array("Hawthorn", 1, false, 0)
+        );
+    }
+
 
 }

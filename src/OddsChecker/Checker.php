@@ -94,6 +94,30 @@ class Checker
     }
 
     /**
+     * Filters data array with team name, limit and actual time
+     *
+     * @param array $data
+     * @param string $team
+     * @param int $limit
+     * @param bool $actual
+     * @return array
+     */
+    public function filterData(array $data, string $team, int $limit = 10, bool $actual = true): array
+    {
+        $data = array_filter($data, function($item) use ($team, $actual) {
+             if ($actual && $item["commence_time"] < time())
+                 return false;
+             $teams = array_map(function($item) {
+                 return strtoupper($item);
+             }, $item["teams"]);
+             if (!in_array(strtoupper($team), $teams))
+                 return false;
+             return true;
+        });
+        return array_slice($data, 0, $limit);
+    }
+
+    /**
      * Checks API response for all required fields and their values
      *
      * @param ResponseInterface $apiResponse
